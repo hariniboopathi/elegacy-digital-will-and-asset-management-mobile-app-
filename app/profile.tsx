@@ -1,18 +1,8 @@
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  Button,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import Colors from "../src/constants/Colors";
 
 export default function ProfileScreen() {
@@ -21,10 +11,8 @@ export default function ProfileScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [shareEmail, setShareEmail] = useState("");
 
-  // Load saved profile details
+  // Load saved profile
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -58,7 +46,7 @@ export default function ProfileScreen() {
     }
   };
 
-  // Save profile data
+  // Save profile
   const saveProfile = async () => {
     if (!name || !email) {
       Alert.alert("Please fill in your name and email.");
@@ -70,92 +58,52 @@ export default function ProfileScreen() {
     Alert.alert("Profile saved successfully!");
   };
 
-  // Handle document sharing
-  const handleShare = () => {
-    if (!shareEmail.includes("@")) {
-      Alert.alert("Invalid Email", "Please enter a valid email address.");
-      return;
-    }
-    // Future backend integration can go here
-    Alert.alert("Invited!", `Your invitation has been sent to ${shareEmail}`);
-    setModalVisible(false);
-    setShareEmail("");
-  };
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ alignItems: "center" }}>
-      <Text style={styles.header}>My Profile</Text>
+    <ScrollView style={styles.container}>
+      {/* Top Header */}
+      <View style={styles.topContainer}>
+        <TouchableOpacity onPress={pickImage} style={styles.profileImageContainer}>
+          <Image
+            source={profileImage ? { uri: profileImage } : require("../assets/default-profile.png")}
+            style={styles.profileImage}
+          />
+          <Ionicons name="camera" size={20} color="white" style={styles.cameraIcon} />
+        </TouchableOpacity>
+        <Text style={styles.userName}>{name || "Your Name"}</Text>
+        <Text style={styles.userPhone}>{phone || "+91-XXXXXXXXXX"}</Text>
+      </View>
 
-      <TouchableOpacity onPress={pickImage}>
-        <Image
-          source={
-            profileImage
-              ? { uri: profileImage }
-              : require("../assets/default-profile.png")
-          }
-          style={styles.profileImage}
-        />
-        <Text style={styles.editPhoto}>Change Photo</Text>
+      {/* Profile Info */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Email</Text>
+          <TextInput style={styles.infoValue} value={email} onChangeText={setEmail} placeholder="Enter Email" />
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Phone</Text>
+          <TextInput style={styles.infoValue} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="Enter Phone" />
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Address</Text>
+          <TextInput style={styles.infoValue} value={address} onChangeText={setAddress} placeholder="Enter Address" />
+        </View>
+      </View>
+
+      {/* Action Buttons */}
+      <TouchableOpacity style={styles.actionButton} onPress={saveProfile}>
+        <Ionicons name="save-outline" size={20} color="#fff" />
+        <Text style={styles.actionText}>Save Profile</Text>
       </TouchableOpacity>
 
-      <TextInput
-        placeholder="Full Name"
-        style={styles.input}
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        placeholder="Email"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-      />
-      <TextInput
-        placeholder="Phone Number"
-        style={styles.input}
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
-      <TextInput
-        placeholder="Address"
-        style={styles.input}
-        value={address}
-        onChangeText={setAddress}
-      />
+      <TouchableOpacity style={styles.optionButton}>
+        <Ionicons name="document-text-outline" size={20} color={Colors.primary} />
+        <Text style={styles.optionText}>My Uploaded Documents</Text>
+      </TouchableOpacity>
 
-      <View style={{ marginTop: 20, width: "80%" }}>
-        <Button title="Save Profile" color={Colors.accent} onPress={saveProfile} />
-      </View>
-
-      {/* Share Documents Button */}
-      <View style={{ marginTop: 20, width: "80%" }}>
-        <Button title="INVITE COLLABORATOR" color={Colors.primary} onPress={() => setModalVisible(true)} />
-      </View>
-
-      {/* Modal for entering email */}
-      <Modal visible={isModalVisible} transparent animationType="slide">
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Enter email to invite:</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Enter email"
-              value={shareEmail}
-              onChangeText={setShareEmail}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.okBtn} onPress={handleShare}>
-                <Text style={styles.okText}>Invite</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <TouchableOpacity style={styles.optionButton}>
+        <Ionicons name="time-outline" size={20} color={Colors.primary} />
+        <Text style={styles.optionText}>Access Logs</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -163,62 +111,100 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
-    padding: 20,
+    backgroundColor: "#f5f9ff",
   },
-  header: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: Colors.primary,
-    marginBottom: 20,
-    textAlign: "center",
+  topContainer: {
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    paddingVertical: 30,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  profileImageContainer: {
+    position: "relative",
   },
   profileImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    borderWidth: 2,
-    borderColor: Colors.primary,
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  cameraIcon: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    backgroundColor: Colors.accent,
+    padding: 5,
+    borderRadius: 15,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#fff",
+    marginTop: 10,
+  },
+  userPhone: {
+    color: "#f0f0f0",
+    fontSize: 14,
+  },
+  infoCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
+    marginVertical: 20,
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  infoRow: {
     marginBottom: 10,
   },
-  editPhoto: {
-    color: Colors.accent,
-    textAlign: "center",
-    fontWeight: "bold",
-    marginBottom: 20,
+  infoLabel: {
+    fontSize: 14,
+    color: Colors.gray,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.gray,
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 15,
-    width: "90%",
+  infoValue: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+    paddingVertical: 5,
+    fontSize: 16,
+    color: "#333",
   },
-  modalBackground: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  modalContainer: {
-    width: "80%",
-    backgroundColor: "#fff",
-    padding: 20,
+  actionButton: {
+    backgroundColor: Colors.accent,
+    marginHorizontal: 20,
+    padding: 15,
     borderRadius: 10,
-    elevation: 5,
-  },
-  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 15,
   },
-  modalActions: { flexDirection: "row", justifyContent: "space-between" },
-  cancelBtn: { padding: 10 },
-  cancelText: { color: "red" },
-  okBtn: { padding: 10 },
-  okText: { color: Colors.primary, fontWeight: "bold" },
+  actionText: {
+    color: "#fff",
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  optionButton: {
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+    marginHorizontal: 20,
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  optionText: {
+    marginLeft: 10,
+    color: Colors.primary,
+    fontWeight: "600",
+  },
 });

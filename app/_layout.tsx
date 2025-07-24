@@ -62,13 +62,36 @@ export default function Layout() {
         }}
       />
 
+
       {/* View Documents */}
       <Drawer.Screen
         name="view-documents"
         options={{
-          title: "Doc Management",
+          title: "Doc Manager",
           drawerIcon: ({ color, size }) => (
             <Ionicons name="folder-open-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Manage Access */}
+      <Drawer.Screen
+        name="manageAccess"
+        options={{
+          title: "Access Manager",
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Notifications */}
+      <Drawer.Screen
+        name="notification"
+        options={{ 
+          title: "Notifications",
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="notifications-outline" size={size} color={color} />
           ),
         }}
       />

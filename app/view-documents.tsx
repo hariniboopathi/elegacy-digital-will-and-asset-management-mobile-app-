@@ -12,157 +12,215 @@ import {
 } from "react-native";
 import Colors from "../src/constants/Colors";
 
-export default function ViewDocumentsScreen() {
+const initialDocuments = [
+  { id: "1", title: "Property Deed", propertyName: "Green Villa", address: "123 Palm Street", type: "House" },
+  { id: "2", title: "Investment Report", propertyName: "Stock Portfolio", address: "N/A", type: "Financial" },
+  { id: "3", title: "Rental Agreement", propertyName: "Sunset Apartments", address: "45 Hill Road", type: "Apartment" },
+  { id: "4", title: "Car Ownership", propertyName: "BMW X5", address: "N/A", type: "Vehicle" },
+  { id: "5", title: "Insurance Policy", propertyName: "Health Plan", address: "N/A", type: "Insurance" },
+  { id: "6", title: "Tax Document", propertyName: "FY 2024 Tax Filing", address: "N/A", type: "Tax" },
+];
+
+export default function ViewDocuments() {
+  const [documents, setDocuments] = useState(initialDocuments);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("name");
-  const [isEditModalVisible, setEditModalVisible] = useState(false);
+  const [sortBy, setSortBy] = useState<"propertyName" | "type">("propertyName");
 
-  const [documents, setDocuments] = useState([
-    {
-      id: "1",
-      name: "Property Deed.pdf",
-      propertyName: "Green Villa",
-      address: "123 Palm Street",
-      type: "Residential",
-    },
-    {
-      id: "2",
-      name: "Investment Plan.docx",
-      propertyName: "Blue Apartment",
-      address: "456 Lake View",
-      type: "Commercial",
-    },
-    {
-      id: "3",
-      name: "Will_Jan2025.pdf",
-      propertyName: "Sunset House",
-      address: "789 Beach Road",
-      type: "Residential",
-    },
-    {
-      id: "4",
-      name: "PropertyTax_2025.pdf",
-      propertyName: "Palm Residency",
-      address: "101 Palm Heights",
-      type: "Residential",
-    },
-    {
-      id: "5",
-      name: "RentalAgreement.pdf",
-      propertyName: "Hill Top Villa",
-      address: "234 Mountain Street",
-      type: "Residential",
-    },
-    {
-      id: "6",
-      name: "InsurancePolicy.pdf",
-      propertyName: "Riverfront House",
-      address: "567 River Lane",
-      type: "Commercial",
-    },
-  ]);
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<any>(null);
 
-  // Filter and sort documents
-  const filteredDocs = documents
+  const [isMetadataModalVisible, setMetadataModalVisible] = useState(false);
+  const [isShareModalVisible, setShareModalVisible] = useState(false);
+
+  // Filter documents
+  const filteredDocuments = documents
     .filter(
       (doc) =>
-        doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        doc.propertyName.toLowerCase().includes(searchQuery.toLowerCase())
+        doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        doc.propertyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        doc.type.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "property") return a.propertyName.localeCompare(b.propertyName);
-      return 0;
-    });
+    .sort((a, b) => (a[sortBy] > b[sortBy] ? 1 : -1));
 
-  // Handle Delete
-  const handleDelete = (id: string) => {
-    Alert.alert("Delete Document", "Are you sure you want to delete this document?", [
-      { text: "Cancel", style: "cancel" },
+  const openBottomSheet = (doc: any) => {
+    setSelectedDoc(doc);
+    setBottomSheetVisible(true);
+  };
+
+  const handleEditMetadata = () => {
+    setMetadataModalVisible(true);
+    setBottomSheetVisible(false);
+  };
+
+  const handleShare = () => {
+    setShareModalVisible(true);
+    setBottomSheetVisible(false);
+    console.log("Share action for:", selectedDoc.title);
+  };
+
+  const handleDelete = () => {
+    Alert.alert("Delete Document", `Are you sure you want to delete "${selectedDoc.title}"?`, [
+      { text: "Cancel" },
       {
         text: "Delete",
-        style: "destructive",
-        onPress: () => setDocuments((prev) => prev.filter((doc) => doc.id !== id)),
+        onPress: () => {
+          console.log("Deleted:", selectedDoc.title);
+          setDocuments((prev) => prev.filter((doc) => doc.id !== selectedDoc.id));
+          setBottomSheetVisible(false);
+        },
       },
     ]);
   };
 
+  const renderDocument = ({ item }: { item: any }) => (
+    <View style={styles.card}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <View>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.cardSubtitle}>
+            {item.propertyName} | {item.type}
+          </Text>
+          <Text style={styles.cardAddress}>{item.address}</Text>
+        </View>
+        <TouchableOpacity onPress={() => openBottomSheet(item)}>
+          <Ionicons name="ellipsis-vertical" size={22} color="#333" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
-      <View style={styles.searchRow}>
-        <Ionicons name="search-outline" size={20} color={Colors.gray} style={styles.searchIcon} />
+      <Text style={styles.header}>Uploaded Documents</Text>
+
+      {/* Search and Sort */}
+      <View style={styles.searchSortContainer}>
         <TextInput
-          style={styles.searchInput}
           placeholder="Search documents..."
+          style={styles.searchBar}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         <TouchableOpacity
           style={styles.sortButton}
-          onPress={() => setSortBy(sortBy === "name" ? "property" : "name")}
+          onPress={() =>
+            setSortBy(sortBy === "propertyName" ? "type" : "propertyName")
+          }
         >
-          <Ionicons name="swap-vertical-outline" size={20} color={Colors.primary} />
-          <Text style={styles.sortText}>Sort by {sortBy}</Text>
+          <Ionicons name="swap-vertical" size={20} color="#fff" />
+          <Text style={styles.sortText}>
+            Sort by {sortBy === "propertyName" ? "Name" : "Type"}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Document List */}
       <FlatList
-        data={filteredDocs}
+        data={filteredDocuments}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.docName}>{item.name}</Text>
-              <Text style={styles.propertyText}>
-                {item.propertyName} - {item.type}
-              </Text>
-              <Text style={styles.address}>{item.address}</Text>
-            </View>
-
-            {/* Buttons */}
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => setEditModalVisible(true)}
-              >
-                <Ionicons name="create-outline" size={20} color={Colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => handleDelete(item.id)}
-              >
-                <Ionicons name="trash-outline" size={20} color="red" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-        ListEmptyComponent={
-          <Text style={{ textAlign: "center", marginTop: 50, color: Colors.gray }}>
-            No documents found.
-          </Text>
-        }
+        renderItem={renderDocument}
+        contentContainerStyle={{ paddingBottom: 50 }}
       />
+
+      {/* Bottom Sheet Menu */}
+      <Modal
+        visible={bottomSheetVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setBottomSheetVisible(false)}
+      >
+        <View style={styles.bottomSheetOverlay}>
+          <View style={styles.bottomSheet}>
+            <Text style={styles.sheetTitle}>Options for {selectedDoc?.title}</Text>
+            <TouchableOpacity style={styles.sheetOption} onPress={handleEditMetadata}>
+              <Ionicons name="create-outline" size={20} color={Colors.primary} />
+              <Text style={styles.sheetText}>Edit Metadata</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sheetOption} onPress={handleShare}>
+              <Ionicons name="share-outline" size={20} color={Colors.primary} />
+              <Text style={styles.sheetText}>Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sheetOption} onPress={handleDelete}>
+              <Ionicons name="trash-outline" size={20} color="red" />
+              <Text style={[styles.sheetText, { color: "red" }]}>Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.closeSheet}
+              onPress={() => setBottomSheetVisible(false)}
+            >
+              <Text style={styles.closeSheetText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Metadata Modal */}
       <Modal
-        visible={isEditModalVisible}
-        transparent={true}
         animationType="slide"
-        onRequestClose={() => setEditModalVisible(false)}
+        transparent={true}
+        visible={isMetadataModalVisible}
+        onRequestClose={() => setMetadataModalVisible(false)}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Property Metadata</Text>
-            <TextInput placeholder="Property Name" style={styles.modalInput} />
-            <TextInput placeholder="Address" style={styles.modalInput} />
-            <TextInput placeholder="Type (Residential/Commercial)" style={styles.modalInput} />
+            <Text style={styles.modalTitle}>Edit Metadata</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Property Name"
+              value={selectedDoc?.propertyName || ""}
+              onChangeText={(text) =>
+                setSelectedDoc({ ...selectedDoc, propertyName: text })
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Property Address"
+              value={selectedDoc?.address || ""}
+              onChangeText={(text) =>
+                setSelectedDoc({ ...selectedDoc, address: text })
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Property Type"
+              value={selectedDoc?.type || ""}
+              onChangeText={(text) =>
+                setSelectedDoc({ ...selectedDoc, type: text })
+              }
+            />
+
             <TouchableOpacity
               style={styles.saveButton}
-              onPress={() => setEditModalVisible(false)}
+              onPress={() => {
+                console.log("Updated Metadata:", selectedDoc);
+                setMetadataModalVisible(false);
+              }}
             >
               <Text style={styles.saveButtonText}>Save Changes</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Share Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isShareModalVisible}
+        onRequestClose={() => setShareModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Share Document</Text>
+            <TextInput style={styles.input} placeholder="Enter email..." />
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={() => {
+                console.log("Document shared successfully");
+                setShareModalVisible(false);
+              }}
+            >
+              <Text style={styles.saveButtonText}>Send Invite</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -172,100 +230,52 @@ export default function ViewDocumentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: "#f4f4f4", padding: 20 },
+  header: { fontSize: 24, fontWeight: "bold", marginBottom: 15, color: Colors.primary },
+  searchSortContainer: { flexDirection: "row", marginBottom: 15, alignItems: "center" },
+  searchBar: {
     flex: 1,
-    backgroundColor: "#f4f6f9",
-    padding: 15,
-  },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-    elevation: 1,
-  },
-  searchIcon: {
-    marginRight: 5,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 8,
-    fontSize: 16,
-  },
-  sortButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  sortText: {
-    fontSize: 12,
-    marginLeft: 4,
-    color: Colors.primary,
-  },
-  card: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
-    marginVertical: 8,
-    elevation: 2,
-    alignItems: "center",
-  },
-  docName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: Colors.primary,
-  },
-  propertyText: {
-    fontSize: 14,
-    color: "#444",
-  },
-  address: {
-    fontSize: 12,
-    color: "#777",
-  },
-  actions: {
-    flexDirection: "row",
-  },
-  iconButton: {
-    marginHorizontal: 6,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    width: "85%",
-    borderRadius: 10,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: Colors.primary,
-    marginBottom: 15,
-  },
-  modalInput: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
-    padding: 10,
-    marginVertical: 8,
+    padding: 8,
+    backgroundColor: "#fff",
+    marginRight: 10,
   },
-  saveButton: {
+  sortButton: {
     backgroundColor: Colors.primary,
+    padding: 10,
     borderRadius: 8,
-    padding: 12,
-    marginTop: 10,
+    flexDirection: "row",
     alignItems: "center",
   },
-  saveButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
+  sortText: { color: "#fff", marginLeft: 5 },
+  card: {
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 15,
+    elevation: 3,
+    position: "relative",
   },
+  cardTitle: { fontSize: 18, fontWeight: "bold", color: "#333" },
+  cardSubtitle: { fontSize: 14, color: "#555", marginTop: 5 },
+  cardAddress: { fontSize: 13, color: "#888", marginTop: 3 },
+
+  // Bottom Sheet
+  bottomSheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+  bottomSheet: { backgroundColor: "#fff", padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  sheetTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
+  sheetOption: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
+  sheetText: { marginLeft: 10, fontSize: 16 },
+  closeSheet: { marginTop: 15, padding: 10, alignItems: "center" },
+  closeSheetText: { color: Colors.primary, fontWeight: "bold" },
+
+  // Modals
+  modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" },
+  modalContent: { width: "85%", backgroundColor: "#fff", borderRadius: 10, padding: 20 },
+  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 15 },
+  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, marginBottom: 12, backgroundColor: "#fafafa" },
+  saveButton: { backgroundColor: Colors.primary, padding: 12, borderRadius: 8, alignItems: "center" },
+  saveButtonText: { color: "#fff", fontWeight: "bold" },
 });

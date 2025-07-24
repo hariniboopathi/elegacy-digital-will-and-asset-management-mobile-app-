@@ -79,7 +79,7 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: "#333", marginTop: 10 }]}
-              onPress={() => router.push("/view-documents")}
+              onPress={() => router.push("/notification")}
             >
               <Ionicons name="list-outline" size={22} color="#fff" />
               <Text style={styles.actionText}>View Access Logs</Text>
