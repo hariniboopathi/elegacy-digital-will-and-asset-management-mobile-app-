@@ -11,46 +11,50 @@ import {
 } from "react-native";
 import Colors from "../src/constants/Colors";
 
+// Add your backend URL here (e.g., your Ngrok URL)
+const API_BASE_URL = "http://localhost:5000";
+
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter(); // for navigation
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    // Basic validation
     if (!email.includes("@")) {
       Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
     if (password.length < 6) {
-      Alert.alert(
-        "Invalid Password",
-        "Password must be at least 6 characters."
-      );
+      Alert.alert("Invalid Password", "Password must be at least 6 characters.");
       return;
     }
 
-    AsyncStorage.setItem("user", JSON.stringify({ email, password }))
-      .then(() => {
-        console.warn("User logged in:", { email, password });
-        Alert.alert("Login Successful", "You have successfully logged in.", [
-          {
-            text: "OK",
-            onPress: () => router.replace("/"), // Navigate to home
-          },
-        ]);
-        router.replace("/"); 
-        
-      })
-      .catch((error) => {
-        Alert.alert(
-          "Error",
-          "An error occurred while logging in. Please try again."
-        );
-        console.error(error);
+    try {
+      // Call Flask login API
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
+      console.log("response",response)
+      const data = await response.json();
+      console.log("Login response:", data);
+
+      if (response.ok) {
+        // Store user token/session in AsyncStorage
+        await AsyncStorage.setItem("user", JSON.stringify(data));
+
+        // Navigate to home immediately
+        router.replace("/");
+      } else {
+        Alert.alert("Login Failed", data.message || "Invalid credentials");
+      }
+    } catch (error) {
+      console.error("Login Error:", error);
+      Alert.alert("Error", "Unable to connect to the server.");
+    }
   };
-
-
 
   return (
     <View style={styles.container}>
@@ -60,6 +64,7 @@ export default function LoginScreen() {
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
+        autoCapitalize="none"
       />
       <TextInput
         style={styles.input}

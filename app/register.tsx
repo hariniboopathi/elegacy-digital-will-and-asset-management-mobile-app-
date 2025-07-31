@@ -1,6 +1,13 @@
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import React, { useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+    Alert,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import Colors from "../src/constants/Colors";
 
 export default function RegisterScreen() {
@@ -9,21 +16,45 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleRegister = () => {
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert("All fields are required.");
-      return;
+
+
+const handleRegister = async () => {
+  if (!name || !email || !password || !confirmPassword) {
+    Alert.alert("All fields are required.");
+    return;
+  }
+  if (!email.includes("@")) {
+    Alert.alert("Invalid Email", "Please enter a valid email.");
+    return;
+  }
+  if (password !== confirmPassword) {
+    Alert.alert("Passwords do not match.");
+    return;
+  }
+
+  try {
+    // Add your backend URL here (e.g., your Ngrok URL)
+    const API_BASE_URL = "http://localhost:5000";
+    const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      Alert.alert("Success", "Registration successful!", [
+        { text: "OK", onPress: () => router.replace("/login") },
+      ]);
+    } else {
+      Alert.alert("Error", data.message || "Registration failed");
     }
-    if (!email.includes("@")) {
-      Alert.alert("Invalid Email", "Please enter a valid email.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert("Passwords do not match.");
-      return;
-    }
-    Alert.alert("Registration Successful!");
-  };
+  } catch (error) {
+    console.error("Registration Error:", error);
+    Alert.alert("Error", "Unable to connect to server.");
+  }
+};
 
   return (
     <View style={styles.container}>
@@ -39,6 +70,7 @@ export default function RegisterScreen() {
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
+        autoCapitalize="none"
       />
       <TextInput
         style={styles.input}

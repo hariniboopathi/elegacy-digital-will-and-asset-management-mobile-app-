@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -12,19 +13,14 @@ import {
 } from "react-native";
 import Colors from "../src/constants/Colors";
 
-const initialDocuments = [
-  { id: "1", title: "Property Deed", propertyName: "Green Villa", address: "123 Palm Street", type: "House" },
-  { id: "2", title: "Investment Report", propertyName: "Stock Portfolio", address: "N/A", type: "Financial" },
-  { id: "3", title: "Rental Agreement", propertyName: "Sunset Apartments", address: "45 Hill Road", type: "Apartment" },
-  { id: "4", title: "Car Ownership", propertyName: "BMW X5", address: "N/A", type: "Vehicle" },
-  { id: "5", title: "Insurance Policy", propertyName: "Health Plan", address: "N/A", type: "Insurance" },
-  { id: "6", title: "Tax Document", propertyName: "FY 2024 Tax Filing", address: "N/A", type: "Tax" },
-];
+// Add your backend URL here
+const API_BASE_URL = "http://192.168.29.160:5000";
 
 export default function ViewDocuments() {
-  const [documents, setDocuments] = useState(initialDocuments);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"propertyName" | "type">("propertyName");
+  const [sortBy, setSortBy] = useState<"property_name" | "type">("property_name");
+  const [userEmail, setUserEmail] = useState("");
 
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
@@ -32,12 +28,51 @@ export default function ViewDocuments() {
   const [isMetadataModalVisible, setMetadataModalVisible] = useState(false);
   const [isShareModalVisible, setShareModalVisible] = useState(false);
 
+  // Load user email and documents from MongoDB
+  useEffect(() => {
+    loadUserEmail();
+  }, []);
+
+  useEffect(() => {
+    if (userEmail) {
+      loadDocuments();
+    }
+  }, [userEmail]);
+
+  const loadUserEmail = async () => {
+    try {
+      const userData = await AsyncStorage.getItem("user");
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserEmail(user.user?.email || user.email || "");
+      }
+    } catch (error) {
+      console.error("Error loading user email:", error);
+    }
+  };
+
+  const loadDocuments = async () => {
+    try {
+      if (userEmail) {
+        const response = await fetch(`${API_BASE_URL}/api/documents/${userEmail}`);
+        if (response.ok) {
+          const data = await response.json();
+          setDocuments(data.documents || []);
+        } else {
+          console.error("Failed to load documents");
+        }
+      }
+    } catch (error) {
+      console.error("Error loading documents:", error);
+    }
+  };
+
   // Filter documents
   const filteredDocuments = documents
     .filter(
       (doc) =>
         doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        doc.propertyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        doc.property_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         doc.type.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => (a[sortBy] > b[sortBy] ? 1 : -1));
@@ -63,10 +98,23 @@ export default function ViewDocuments() {
       { text: "Cancel" },
       {
         text: "Delete",
-        onPress: () => {
-          console.log("Deleted:", selectedDoc.title);
-          setDocuments((prev) => prev.filter((doc) => doc.id !== selectedDoc.id));
-          setBottomSheetVisible(false);
+        onPress: async () => {
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/documents/${selectedDoc._id}`, {
+              method: "DELETE",
+            });
+
+            if (response.ok) {
+              console.log("Deleted:", selectedDoc.title);
+              await loadDocuments(); // Reload documents from server
+              setBottomSheetVisible(false);
+            } else {
+              Alert.alert("Error", "Failed to delete document");
+            }
+          } catch (error) {
+            console.error("Delete error:", error);
+            Alert.alert("Error", "Failed to delete document");
+          }
         },
       },
     ]);
@@ -78,7 +126,7 @@ export default function ViewDocuments() {
         <View>
           <Text style={styles.cardTitle}>{item.title}</Text>
           <Text style={styles.cardSubtitle}>
-            {item.propertyName} | {item.type}
+            {item.property_name} | {item.type}
           </Text>
           <Text style={styles.cardAddress}>{item.address}</Text>
         </View>
@@ -104,12 +152,12 @@ export default function ViewDocuments() {
         <TouchableOpacity
           style={styles.sortButton}
           onPress={() =>
-            setSortBy(sortBy === "propertyName" ? "type" : "propertyName")
+            setSortBy(sortBy === "property_name" ? "type" : "property_name")
           }
         >
           <Ionicons name="swap-vertical" size={20} color="#fff" />
           <Text style={styles.sortText}>
-            Sort by {sortBy === "propertyName" ? "Name" : "Type"}
+            Sort by {sortBy === "property_name" ? "Name" : "Type"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -167,9 +215,9 @@ export default function ViewDocuments() {
             <TextInput
               style={styles.input}
               placeholder="Property Name"
-              value={selectedDoc?.propertyName || ""}
+              value={selectedDoc?.property_name || ""}
               onChangeText={(text) =>
-                setSelectedDoc({ ...selectedDoc, propertyName: text })
+                setSelectedDoc({ ...selectedDoc, property_name: text })
               }
             />
             <TextInput
@@ -191,9 +239,27 @@ export default function ViewDocuments() {
 
             <TouchableOpacity
               style={styles.saveButton}
-              onPress={() => {
-                console.log("Updated Metadata:", selectedDoc);
-                setMetadataModalVisible(false);
+              onPress={async () => {
+                try {
+                  const response = await fetch(`${API_BASE_URL}/api/documents/${selectedDoc._id}`, {
+                    method: "PUT",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(selectedDoc),
+                  });
+
+                  if (response.ok) {
+                    console.log("Updated Metadata:", selectedDoc);
+                    await loadDocuments(); // Reload documents from server
+                    setMetadataModalVisible(false);
+                  } else {
+                    Alert.alert("Error", "Failed to update document metadata");
+                  }
+                } catch (error) {
+                  console.error("Update error:", error);
+                  Alert.alert("Error", "Failed to update document metadata");
+                }
               }}
             >
               <Text style={styles.saveButtonText}>Save Changes</Text>

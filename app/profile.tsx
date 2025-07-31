@@ -16,11 +16,22 @@ export default function ProfileScreen() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
+        // Load logged-in user data
+        const userData = await AsyncStorage.getItem("user");
+        if (userData) {
+          const user = JSON.parse(userData);
+          // Set email from logged-in user data
+          setEmail(user.user?.email || user.email || "");
+          setName(user.user?.name || user.name || "");
+        }
+
+        // Load saved profile data (for phone, address, profile image)
         const savedProfile = await AsyncStorage.getItem("userProfile");
         if (savedProfile) {
           const profile = JSON.parse(savedProfile);
-          setName(profile.name || "");
-          setEmail(profile.email || "");
+          // Only update fields that aren't already set from user data
+          if (!name) setName(profile.name || "");
+          if (!email) setEmail(profile.email || "");
           setPhone(profile.phone || "");
           setAddress(profile.address || "");
           setProfileImage(profile.profileImage || null);

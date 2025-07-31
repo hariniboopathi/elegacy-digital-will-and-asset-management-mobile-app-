@@ -4,13 +4,34 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { useEffect, useState } from "react";
+import { NativeModules, Platform } from "react-native";
 import Colors from "../src/constants/Colors";
+
+// 🔐 Conditionally import only on native platforms
+let PrivacySnapshot: any = null;
+if (Platform.OS === "ios") {
+  try {
+    PrivacySnapshot = require("react-native-privacy-snapshot").default;
+  } catch (e) {
+    console.warn("PrivacySnapshot not available on iOS in this environment.");
+  }
+}
 
 export default function Layout() {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Check login status with splash delay
+  // 🔒 Disable screenshots/screen recording
+  useEffect(() => {
+    if (Platform.OS === "ios" && PrivacySnapshot) {
+      PrivacySnapshot.enabled(true);
+    }
+
+    if (Platform.OS === "android" && NativeModules?.PreventScreenshotModule?.activate) {
+      NativeModules.PreventScreenshotModule.activate();
+    }
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(async () => {
       const user = await AsyncStorage.getItem("user");
@@ -20,7 +41,6 @@ export default function Layout() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!loading && !isLoggedIn) {
       router.replace("/login");
@@ -40,7 +60,6 @@ export default function Layout() {
         drawerLabelStyle: { fontSize: 16 },
       }}
     >
-      {/* Home */}
       <Drawer.Screen
         name="index"
         options={{
@@ -50,8 +69,6 @@ export default function Layout() {
           ),
         }}
       />
-
-      {/* Upload Documents */}
       <Drawer.Screen
         name="upload"
         options={{
@@ -61,9 +78,6 @@ export default function Layout() {
           ),
         }}
       />
-
-
-      {/* View Documents */}
       <Drawer.Screen
         name="view-documents"
         options={{
@@ -73,8 +87,6 @@ export default function Layout() {
           ),
         }}
       />
-
-      {/* Manage Access */}
       <Drawer.Screen
         name="manageAccess"
         options={{
@@ -84,19 +96,15 @@ export default function Layout() {
           ),
         }}
       />
-
-      {/* Notifications */}
       <Drawer.Screen
         name="notification"
-        options={{ 
+        options={{
           title: "Notifications",
           drawerIcon: ({ color, size }) => (
             <Ionicons name="notifications-outline" size={size} color={color} />
           ),
         }}
       />
-
-      {/* Will & Legal Documents */}
       <Drawer.Screen
         name="will-documents"
         options={{
@@ -106,8 +114,6 @@ export default function Layout() {
           ),
         }}
       />
-
-      {/* About */}
       <Drawer.Screen
         name="about"
         options={{
@@ -117,8 +123,6 @@ export default function Layout() {
           ),
         }}
       />
-
-      {/* Profile */}
       <Drawer.Screen
         name="profile"
         options={{
@@ -128,8 +132,6 @@ export default function Layout() {
           ),
         }}
       />
-
-      {/* Logout */}
       <Drawer.Screen
         name="logout"
         options={{
@@ -142,13 +144,10 @@ export default function Layout() {
           drawerItemPress: async (e) => {
             e.preventDefault();
             await AsyncStorage.removeItem("user");
-            console.warn("User removed from AsyncStorage");
             router.replace("/login");
           },
         }}
       />
-
-      {/* Hidden Screens */}
       <Drawer.Screen
         name="login"
         options={{

@@ -8,7 +8,7 @@ import {
     Text,
     View,
 } from "react-native";
-import { Colors } from "react-native/Libraries/NewAppScreen";
+import Colors from "../src/constants/Colors";
 
 const { width } = Dimensions.get("window");
 
