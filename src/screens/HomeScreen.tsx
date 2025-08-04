@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dimensions,
   ImageBackground,
@@ -13,14 +14,50 @@ import {
 import * as Animatable from "react-native-animatable";
 import Colors from "../constants/Colors";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
+const API_BASE_URL = "http://192.168.31.110:5000"; // use your IP
 
 export default function HomeScreen() {
-  const [recentDocs] = useState([
-    { id: 1, title: "Property Deed.pdf" },
-    { id: 2, title: "Will_Jan2025.pdf" },
-    { id: 3, title: "InvestmentDetails.xlsx" },
-  ]);
+  const [documentCount, setDocumentCount] = useState(0);
+  const [userEmail, setUserEmail] = useState("");
+
+  const [recentDocs, setRecentDocs] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadUserEmail();
+  }, []);
+
+  useEffect(() => {
+    if (userEmail) {
+      fetchDocuments(userEmail);
+    }
+  }, [userEmail]);
+
+  const loadUserEmail = async () => {
+    try {
+      const userData = await AsyncStorage.getItem("user");
+      if (userData) {
+        const user = JSON.parse(userData);
+        const email = user.user?.email || user.email || "";
+        setUserEmail(email);
+      }
+    } catch (error) {
+      console.error("Error loading user email:", error);
+    }
+  };
+
+  const fetchDocuments = async (email: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/documents/${email}`);
+      if (response.ok) {
+        const data = await response.json();
+        setDocumentCount(data.documents.length || 0);
+        setRecentDocs(data.documents.slice(-3).reverse()); // last 3 documents
+      }
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+    }
+  };
 
   return (
     <ImageBackground
@@ -34,7 +71,7 @@ export default function HomeScreen() {
           <View style={styles.cardRow}>
             <Animatable.View animation="fadeInUp" duration={800} style={styles.cardWide}>
               <Ionicons name="documents-outline" size={40} color={Colors.primary} />
-              <Text style={styles.cardNumber}>12</Text>
+              <Text style={styles.cardNumber}>{documentCount}</Text>
               <Text style={styles.cardLabel}>Total Properties</Text>
             </Animatable.View>
 
@@ -47,13 +84,17 @@ export default function HomeScreen() {
 
           {/* Recently Accessed */}
           <Animatable.View animation="fadeInUp" delay={400} duration={800} style={styles.recentCard}>
-            <Text style={styles.sectionTitle}>Recently Accessed</Text>
-            {recentDocs.map((doc) => (
-              <View key={doc.id} style={styles.recentItem}>
-                <Ionicons name="document-outline" size={20} color={Colors.primary} />
-                <Text style={styles.recentText}>{doc.title}</Text>
-              </View>
-            ))}
+            <Text style={styles.sectionTitle}>Recently Uploaded</Text>
+            {recentDocs.length === 0 ? (
+              <Text style={{ color: "#888" }}>No recent documents</Text>
+            ) : (
+              recentDocs.map((doc) => (
+                <View key={doc._id} style={styles.recentItem}>
+                  <Ionicons name="document-outline" size={20} color={Colors.primary} />
+                  <Text style={styles.recentText}>{doc.title}</Text>
+                </View>
+              ))
+            )}
           </Animatable.View>
 
           {/* Quick Actions */}
@@ -94,8 +135,12 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    resizeMode: "cover",
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover", // ensures image scales proportionally
+    justifyContent: "center",
   },
+
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center", // Centers vertically

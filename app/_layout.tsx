@@ -23,13 +23,11 @@ export default function Layout() {
 
   // 🔒 Disable screenshots/screen recording
   useEffect(() => {
-    if (Platform.OS === "ios" && PrivacySnapshot) {
-      PrivacySnapshot.enabled(true);
-    }
-
+    // 🔒 Activate native screenshot blocking for Android only
     if (Platform.OS === "android" && NativeModules?.PreventScreenshotModule?.activate) {
       NativeModules.PreventScreenshotModule.activate();
     }
+  
   }, []);
 
   useEffect(() => {

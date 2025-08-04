@@ -1,23 +1,28 @@
 from flask import Flask
 from flask_jwt_extended import JWTManager
-from utils.db import init_db
+from utils.db import mongo
 from routes.auth_routes import auth_bp
 from routes.upload_routes import upload_bp
 from dotenv import load_dotenv
-import os
 from flask_cors import CORS
-CORS
-
+import os
 
 load_dotenv()
 
+# Initialize Flask (no public static folder for uploads)
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+
+# Enable CORS
+CORS(app)
+
+# JWT Configuration
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-key")
 
-db = init_db(app)
-jwt = JWTManager(app)
+# MongoDB Configuration
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/eLegacy")
+mongo.init_app(app)
 
+# Register Blueprints
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(upload_bp, url_prefix="/api")
 
@@ -27,4 +32,3 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-

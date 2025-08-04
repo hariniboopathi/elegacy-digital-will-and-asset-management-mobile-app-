@@ -1,26 +1,23 @@
 from utils.db import mongo
-from datetime import datetime
 from bson import ObjectId
 
 class DocumentModel:
     @staticmethod
-    def create_document(user_email, title, filename, property_name, address, doc_type, encrypted_path):
+    def create_document(user_email, title, filename, property_name, address, doc_type, file_url):
         document = {
-            "user_email": user_email,
+            "email": user_email,
             "title": title,
             "filename": filename,
             "property_name": property_name,
             "address": address,
             "type": doc_type,
-            "encrypted_path": encrypted_path,
-            "upload_date": datetime.utcnow(),
-            "created_at": datetime.utcnow(),
+            "fileUrl": file_url
         }
         return mongo.db.documents.insert_one(document)
 
     @staticmethod
     def find_by_user_email(user_email):
-        return list(mongo.db.documents.find({"user_email": user_email}))
+        return list(mongo.db.documents.find({"email": user_email}))
 
     @staticmethod
     def find_by_id(doc_id):

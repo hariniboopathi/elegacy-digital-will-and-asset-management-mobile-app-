@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native"; // <-- Needed for navigation
 import * as DocumentPicker from "expo-document-picker";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
-  FlatList,
   StyleSheet,
   Text,
   TextInput,
@@ -12,9 +12,10 @@ import {
 } from "react-native";
 import Colors from "../src/constants/Colors";
 
-const API_BASE_URL = "http://192.168.29.160:5000"; 
+const API_BASE_URL = "http://192.168.31.110:5000";
 
 export default function UploadDocumentScreen() {
+  const navigation = useNavigation();
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [documents, setDocuments] = useState<any[]>([]);
@@ -25,11 +26,17 @@ export default function UploadDocumentScreen() {
   const [address, setAddress] = useState("");
   const [type, setType] = useState("");
 
-  // Load user email and existing documents
+  // Load user email first
   useEffect(() => {
     loadUserEmail();
-    loadDocuments();
   }, []);
+
+  // Once userEmail is available, fetch documents
+  useEffect(() => {
+    if (userEmail) {
+      loadDocuments();
+    }
+  }, [userEmail]);
 
   const loadUserEmail = async () => {
     try {
@@ -45,12 +52,10 @@ export default function UploadDocumentScreen() {
 
   const loadDocuments = async () => {
     try {
-      if (userEmail) {
-        const response = await fetch(`${API_BASE_URL}/api/documents/${userEmail}`);
-        if (response.ok) {
-          const data = await response.json();
-          setDocuments(data.documents || []);
-        }
+      const response = await fetch(`${API_BASE_URL}/api/documents/${userEmail}`);
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments(data.documents || []);
       }
     } catch (error) {
       console.error("Error loading documents:", error);
@@ -69,8 +74,6 @@ export default function UploadDocumentScreen() {
   };
 
   const handleUpload = async () => {
-    console.log("=== UPLOAD DEBUG START ===");
-
     if (!selectedFile) {
       Alert.alert("Please select a file first!");
       return;
@@ -92,34 +95,19 @@ export default function UploadDocumentScreen() {
       formData.append("address", address);
       formData.append("type", type);
 
-      // formData.append("document", {
-      //   uri: selectedFile.uri,
-      //   type: selectedFile.mimeType || "application/octet-stream",
-      //   name: selectedFile.name || `file_${Date.now()}.dat`,
-      // } as any);
-        // ✅ CORRECT — sending actual file for native platforms
       formData.append("document", {
-          uri: selectedFile.uri,
-          type: selectedFile.mimeType || "application/octet-stream",
-          name: selectedFile.name || `file_${Date.now()}.dat`,
+        uri: selectedFile.uri,
+        type: selectedFile.mimeType || "application/octet-stream",
+        name: selectedFile.name || `file_${Date.now()}.dat`,
       } as any);
-
-      
-      
-      console.log("Sending FormData to:", `${API_BASE_URL}/api/upload`);
 
       const response = await fetch(`${API_BASE_URL}/api/upload`, {
         method: "POST",
         body: formData,
-        headers: {
-          Accept: "application/json",
-        },
+        headers: { Accept: "application/json" },
       });
 
-      console.log("Response status:", response.status);
       const data = await response.json();
-      console.log("Response data:", data);
-
       if (response.ok) {
         Alert.alert("Success", "Document uploaded successfully!");
         await loadDocuments();
@@ -139,6 +127,7 @@ export default function UploadDocumentScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Upload Form */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Add File</Text>
 
@@ -178,23 +167,15 @@ export default function UploadDocumentScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.subHeader}>Uploaded Documents</Text>
-      {documents.length === 0 ? (
-        <Text style={styles.noDocs}>No documents uploaded yet.</Text>
-      ) : (
-        <FlatList
-          data={documents}
-          keyExtractor={(item) => item._id || item.id}
-          renderItem={({ item }) => (
-            <View style={styles.docItem}>
-              <Text style={{ fontWeight: "bold", fontSize: 16 }}>{item.title}</Text>
-              <Text style={{ color: Colors.gray }}>
-                {item.property_name} | {item.type}
-              </Text>
-            </View>
-          )}
-        />
-      )}
+      {/* View Uploaded Documents Button */}
+      <TouchableOpacity
+        style={styles.viewDocsBtn}
+        onPress={() => navigation.navigate("view-documents" as never)}
+      >
+        <Text style={styles.viewDocsBtnText}>
+          View Uploaded Documents ({documents.length})
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -212,8 +193,19 @@ const styles = StyleSheet.create({
     elevation: 5,
     marginBottom: 20,
   },
-  cardTitle: { fontSize: 20, fontWeight: "bold", color: Colors.primary, marginBottom: 15 },
-  input: { borderWidth: 1, borderColor: Colors.gray, padding: 10, borderRadius: 8, marginBottom: 15 },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: Colors.primary,
+    marginBottom: 15,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.gray,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
   uploadBox: {
     borderWidth: 2,
     borderColor: Colors.primary,
@@ -223,9 +215,19 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
   },
-  uploadBtn: { backgroundColor: "#748DAE", padding: 12, borderRadius: 8, alignItems: "center" },
+  uploadBtn: {
+    backgroundColor: "#748DAE",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
   uploadBtnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
-  subHeader: { fontSize: 18, fontWeight: "bold", marginTop: 10, marginBottom: 10 },
-  noDocs: { textAlign: "center", color: Colors.gray, marginTop: 20 },
-  docItem: { backgroundColor: "#f1f1f1", padding: 10, borderRadius: 6, marginBottom: 8 },
+  viewDocsBtn: {
+    backgroundColor: Colors.primary,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  viewDocsBtnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });

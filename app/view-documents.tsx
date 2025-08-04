@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
+  Linking,
   Modal,
   StyleSheet,
   Text,
@@ -13,8 +14,7 @@ import {
 } from "react-native";
 import Colors from "../src/constants/Colors";
 
-// Add your backend URL here
-const API_BASE_URL = "http://192.168.29.160:5000";
+const API_BASE_URL = "http://192.168.31.110:5000";
 
 export default function ViewDocuments() {
   const [documents, setDocuments] = useState<any[]>([]);
@@ -25,49 +25,41 @@ export default function ViewDocuments() {
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
 
-  const [isMetadataModalVisible, setMetadataModalVisible] = useState(false);
-  const [isShareModalVisible, setShareModalVisible] = useState(false);
-
-  // Load user email and documents from MongoDB
+  // === Load User Email ===
   useEffect(() => {
-    loadUserEmail();
+    (async () => {
+      try {
+        const userData = await AsyncStorage.getItem("user");
+        if (userData) {
+          const user = JSON.parse(userData);
+          setUserEmail(user.user?.email || user.email || "");
+        }
+      } catch (error) {
+        console.error("Error loading user email:", error);
+      }
+    })();
   }, []);
 
+  // === Fetch Documents ===
   useEffect(() => {
-    if (userEmail) {
-      loadDocuments();
-    }
+    if (userEmail) loadDocuments();
   }, [userEmail]);
-
-  const loadUserEmail = async () => {
-    try {
-      const userData = await AsyncStorage.getItem("user");
-      if (userData) {
-        const user = JSON.parse(userData);
-        setUserEmail(user.user?.email || user.email || "");
-      }
-    } catch (error) {
-      console.error("Error loading user email:", error);
-    }
-  };
 
   const loadDocuments = async () => {
     try {
-      if (userEmail) {
-        const response = await fetch(`${API_BASE_URL}/api/documents/${userEmail}`);
-        if (response.ok) {
-          const data = await response.json();
-          setDocuments(data.documents || []);
-        } else {
-          console.error("Failed to load documents");
-        }
+      const response = await fetch(`${API_BASE_URL}/api/documents/${userEmail}`);
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments(data.documents || []);
+      } else {
+        console.error("Failed to load documents");
       }
     } catch (error) {
       console.error("Error loading documents:", error);
     }
   };
 
-  // Filter documents
+  // === Filter & Sort ===
   const filteredDocuments = documents
     .filter(
       (doc) =>
@@ -77,22 +69,28 @@ export default function ViewDocuments() {
     )
     .sort((a, b) => (a[sortBy] > b[sortBy] ? 1 : -1));
 
+  // === Open Bottom Sheet ===
   const openBottomSheet = (doc: any) => {
     setSelectedDoc(doc);
     setBottomSheetVisible(true);
   };
 
-  const handleEditMetadata = () => {
-    setMetadataModalVisible(true);
+  // === View Document (Dynamic URL from DB) ===
+  const handleViewDocument = (doc?: any) => {
+    const documentToView = doc || selectedDoc;
     setBottomSheetVisible(false);
+
+    if (!documentToView) {
+      Alert.alert("Error", "No document selected");
+      return;
+    }
+
+    const url = `${API_BASE_URL}${documentToView.fileUrl}`;
+    console.log("Opening document:", url);
+    Linking.openURL(url);
   };
 
-  const handleShare = () => {
-    setShareModalVisible(true);
-    setBottomSheetVisible(false);
-    console.log("Share action for:", selectedDoc.title);
-  };
-
+  // === Delete Document ===
   const handleDelete = () => {
     Alert.alert("Delete Document", `Are you sure you want to delete "${selectedDoc.title}"?`, [
       { text: "Cancel" },
@@ -103,10 +101,8 @@ export default function ViewDocuments() {
             const response = await fetch(`${API_BASE_URL}/api/documents/${selectedDoc._id}`, {
               method: "DELETE",
             });
-
             if (response.ok) {
-              console.log("Deleted:", selectedDoc.title);
-              await loadDocuments(); // Reload documents from server
+              await loadDocuments();
               setBottomSheetVisible(false);
             } else {
               Alert.alert("Error", "Failed to delete document");
@@ -120,8 +116,9 @@ export default function ViewDocuments() {
     ]);
   };
 
+  // === Render Document Card ===
   const renderDocument = ({ item }: { item: any }) => (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={() => handleViewDocument(item)}>
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <View>
           <Text style={styles.cardTitle}>{item.title}</Text>
@@ -134,14 +131,14 @@ export default function ViewDocuments() {
           <Ionicons name="ellipsis-vertical" size={22} color="#333" />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Uploaded Documents</Text>
 
-      {/* Search and Sort */}
+      {/* Search & Sort */}
       <View style={styles.searchSortContainer}>
         <TextInput
           placeholder="Search documents..."
@@ -151,9 +148,7 @@ export default function ViewDocuments() {
         />
         <TouchableOpacity
           style={styles.sortButton}
-          onPress={() =>
-            setSortBy(sortBy === "property_name" ? "type" : "property_name")
-          }
+          onPress={() => setSortBy(sortBy === "property_name" ? "type" : "property_name")}
         >
           <Ionicons name="swap-vertical" size={20} color="#fff" />
           <Text style={styles.sortText}>
@@ -162,14 +157,15 @@ export default function ViewDocuments() {
         </TouchableOpacity>
       </View>
 
+      {/* Document List */}
       <FlatList
         data={filteredDocuments}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._id}
         renderItem={renderDocument}
         contentContainerStyle={{ paddingBottom: 50 }}
       />
 
-      {/* Bottom Sheet Menu */}
+      {/* Bottom Sheet */}
       <Modal
         visible={bottomSheetVisible}
         animationType="slide"
@@ -179,13 +175,9 @@ export default function ViewDocuments() {
         <View style={styles.bottomSheetOverlay}>
           <View style={styles.bottomSheet}>
             <Text style={styles.sheetTitle}>Options for {selectedDoc?.title}</Text>
-            <TouchableOpacity style={styles.sheetOption} onPress={handleEditMetadata}>
-              <Ionicons name="create-outline" size={20} color={Colors.primary} />
-              <Text style={styles.sheetText}>Edit Metadata</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.sheetOption} onPress={handleShare}>
-              <Ionicons name="share-outline" size={20} color={Colors.primary} />
-              <Text style={styles.sheetText}>Share</Text>
+            <TouchableOpacity style={styles.sheetOption} onPress={() => handleViewDocument()}>
+              <Ionicons name="eye-outline" size={20} color={Colors.primary} />
+              <Text style={styles.sheetText}>View Document</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.sheetOption} onPress={handleDelete}>
               <Ionicons name="trash-outline" size={20} color="red" />
@@ -196,97 +188,6 @@ export default function ViewDocuments() {
               onPress={() => setBottomSheetVisible(false)}
             >
               <Text style={styles.closeSheetText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Edit Metadata Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isMetadataModalVisible}
-        onRequestClose={() => setMetadataModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Metadata</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Property Name"
-              value={selectedDoc?.property_name || ""}
-              onChangeText={(text) =>
-                setSelectedDoc({ ...selectedDoc, property_name: text })
-              }
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Property Address"
-              value={selectedDoc?.address || ""}
-              onChangeText={(text) =>
-                setSelectedDoc({ ...selectedDoc, address: text })
-              }
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Property Type"
-              value={selectedDoc?.type || ""}
-              onChangeText={(text) =>
-                setSelectedDoc({ ...selectedDoc, type: text })
-              }
-            />
-
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={async () => {
-                try {
-                  const response = await fetch(`${API_BASE_URL}/api/documents/${selectedDoc._id}`, {
-                    method: "PUT",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(selectedDoc),
-                  });
-
-                  if (response.ok) {
-                    console.log("Updated Metadata:", selectedDoc);
-                    await loadDocuments(); // Reload documents from server
-                    setMetadataModalVisible(false);
-                  } else {
-                    Alert.alert("Error", "Failed to update document metadata");
-                  }
-                } catch (error) {
-                  console.error("Update error:", error);
-                  Alert.alert("Error", "Failed to update document metadata");
-                }
-              }}
-            >
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Share Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isShareModalVisible}
-        onRequestClose={() => setShareModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Share Document</Text>
-            <TextInput style={styles.input} placeholder="Enter email..." />
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={() => {
-                console.log("Document shared successfully");
-                setShareModalVisible(false);
-              }}
-            >
-              <Text style={styles.saveButtonText}>Send Invite</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -322,13 +223,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 15,
     elevation: 3,
-    position: "relative",
   },
   cardTitle: { fontSize: 18, fontWeight: "bold", color: "#333" },
   cardSubtitle: { fontSize: 14, color: "#555", marginTop: 5 },
   cardAddress: { fontSize: 13, color: "#888", marginTop: 3 },
-
-  // Bottom Sheet
   bottomSheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
   bottomSheet: { backgroundColor: "#fff", padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   sheetTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
@@ -336,12 +234,4 @@ const styles = StyleSheet.create({
   sheetText: { marginLeft: 10, fontSize: 16 },
   closeSheet: { marginTop: 15, padding: 10, alignItems: "center" },
   closeSheetText: { color: Colors.primary, fontWeight: "bold" },
-
-  // Modals
-  modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" },
-  modalContent: { width: "85%", backgroundColor: "#fff", borderRadius: 10, padding: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 15 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, marginBottom: 12, backgroundColor: "#fafafa" },
-  saveButton: { backgroundColor: Colors.primary, padding: 12, borderRadius: 8, alignItems: "center" },
-  saveButtonText: { color: "#fff", fontWeight: "bold" },
 });
