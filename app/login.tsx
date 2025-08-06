@@ -11,16 +11,14 @@ import {
 } from "react-native";
 import Colors from "../src/constants/Colors";
 
-// Add your backend URL here (e.g., your Ngrok URL)
-const API_BASE_URL = "http://192.168.31.110:5000";
+const API_BASE_URL = "http://192.168.54.81:5000"; // Use correct IP
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter(); // for navigation
+  const router = useRouter();
 
   const handleLogin = async () => {
-    // Basic validation
     if (!email.includes("@")) {
       Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
@@ -31,21 +29,21 @@ export default function LoginScreen() {
     }
 
     try {
-      // Call Flask login API
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      console.log("response",response)
-      const data = await response.json();
-      console.log("Login response:", data);
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        data = { message: "Server returned non-JSON response" };
+      }
 
       if (response.ok) {
-        // Store user token/session in AsyncStorage
         await AsyncStorage.setItem("user", JSON.stringify(data));
-
-        // Navigate to home immediately
         router.replace("/");
       } else {
         Alert.alert("Login Failed", data.message || "Invalid credentials");
@@ -59,6 +57,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Login Account</Text>
+
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -73,9 +72,11 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         secureTextEntry
       />
+
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
+
       <Text style={styles.linkText}>
         Don't have an account? <Link href="/register">Register</Link>
       </Text>

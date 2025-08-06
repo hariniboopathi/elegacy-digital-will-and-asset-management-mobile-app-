@@ -3,7 +3,7 @@ from bson import ObjectId
 
 class DocumentModel:
     @staticmethod
-    def create_document(user_email, title, filename, property_name, address, doc_type, file_url):
+    def create_document(user_email, title, filename, property_name, address, doc_type):
         document = {
             "email": user_email,
             "title": title,
@@ -11,7 +11,7 @@ class DocumentModel:
             "property_name": property_name,
             "address": address,
             "type": doc_type,
-            "fileUrl": file_url
+            
         }
         return mongo.db.documents.insert_one(document)
 

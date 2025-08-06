@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import Colors from "../src/constants/Colors";
 
-const API_BASE_URL = "http://192.168.31.110:5000";
+const API_BASE_URL = "http://192.168.0.106:5000";
 
 export default function UploadDocumentScreen() {
   const navigation = useNavigation();

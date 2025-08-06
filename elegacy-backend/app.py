@@ -9,11 +9,18 @@ import os
 
 load_dotenv()
 
-# Initialize Flask (no public static folder for uploads)
 app = Flask(__name__)
 
 # Enable CORS
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Add CORS headers to all responses (fixes 500 error CORS issues)
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+    return response
 
 # JWT Configuration
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-key")
@@ -21,6 +28,8 @@ app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-key")
 # MongoDB Configuration
 app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/eLegacy")
 mongo.init_app(app)
+
+jwt = JWTManager(app)
 
 # Register Blueprints
 app.register_blueprint(auth_bp, url_prefix="/api/auth")

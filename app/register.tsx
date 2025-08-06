@@ -15,54 +15,49 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
-
-
-const handleRegister = async () => {
-  if (!name || !email || !password || !confirmPassword) {
-    Alert.alert("All fields are required.");
-    return;
-  }
-  if (!email.includes("@")) {
-    Alert.alert("Invalid Email", "Please enter a valid email.");
-    return;
-  }
-  if (password !== confirmPassword) {
-    Alert.alert("Passwords do not match.");
-    return;
-  }
-
-  try {
-    // Add your backend URL here (e.g., your Ngrok URL)
-    const API_BASE_URL = "http://192.168.31.110:5000";
-    const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      Alert.alert("Success", "Registration successful!", [
-        { text: "OK", onPress: () => router.replace("/login") },
-      ]);
-
-    } else {
-      Alert.alert("Error", data.message || "Registration failed");
-      console.log(data.message);
-      setError(data.message);
+  const handleRegister = async () => {
+    if (!name || !email || !password || !confirmPassword) {
+      Alert.alert("All fields are required.");
+      return;
     }
-  } catch (error) {
-    console.error("Registration Error:", error);
-    Alert.alert("Error", "Unable to connect to server.");
-  }
-};
+    if (!email.includes("@")) {
+      Alert.alert("Invalid Email", "Please enter a valid email.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Passwords do not match.");
+      return;
+    }
+
+    try {
+      const API_BASE_URL = "http://192.168.151.81:5000"; // Use correct IP
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert("Success", "Registration successful!", [
+          { text: "OK", onPress: () => router.replace("/login") },
+        ]);
+      } else {
+        setError(data.message || "Registration failed");
+      }
+    } catch (error) {
+      console.error("Registration Error:", error);
+      Alert.alert("Error", "Unable to connect to server.");
+    }
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Create Account</Text>
+
       <TextInput
         style={styles.input}
         placeholder="Name"
@@ -90,10 +85,13 @@ const handleRegister = async () => {
         value={confirmPassword}
         onChangeText={setConfirmPassword}
       />
-      {error && <Text style={styles.errorText}>{error}, Use Different Email </Text>}
+
+      {error ? <Text style={styles.errorText}>{`${error} - Use Different Email`}</Text> : null}
+
       <TouchableOpacity style={styles.button} onPress={handleRegister}>
         <Text style={styles.buttonText}>Register</Text>
       </TouchableOpacity>
+
       <Text style={styles.linkText}>
         Already have an account? <Link href="/login">Login</Link>
       </Text>
